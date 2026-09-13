@@ -11,3 +11,13 @@ createRoot(el).render(
     <App />
   </StrictMode>,
 );
+
+// Service Worker を登録しておくと、同期サーバー (PC) の電源が入っていなくても
+// スマホのホーム画面から起動できる。対応していない環境では黙って諦める。
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {
+      /* file:// や非対応ブラウザでは登録できないが、動作に支障はない */
+    });
+  });
+}

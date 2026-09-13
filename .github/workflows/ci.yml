@@ -36,6 +36,7 @@ jobs:
                -o /dev/null http://127.0.0.1:8787/api/health
           npm run e2e -- http://127.0.0.1:8787
           npm run e2e:sync -- http://127.0.0.1:8787
+          npm run e2e:offline -- http://127.0.0.1:8787
 
       - uses: actions/upload-artifact@v4
         with:

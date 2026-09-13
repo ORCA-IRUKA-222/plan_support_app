@@ -16,7 +16,8 @@
     "typecheck": "npm run typecheck --workspace app",
     "apk": "npm run apk --workspace app",
     "e2e": "node e2e/smoke.mjs",
-    "e2e:sync": "node e2e/sync.mjs"
+    "e2e:sync": "node e2e/sync.mjs",
+    "e2e:offline": "node e2e/offline.mjs"
   },
   "engines": {
     "node": ">=20"

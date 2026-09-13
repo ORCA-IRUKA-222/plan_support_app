@@ -21,7 +21,8 @@
     "skipLibCheck": true,
     "noEmit": true,
     "types": [
-      "vitest/globals"
+      "vitest/globals",
+      "vite/client"
     ]
   },
   "include": [
