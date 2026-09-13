@@ -3,6 +3,7 @@ import { emptyState, type PersistedState } from '../store/persist';
 import { replaceAll, setSyncSettings, softDelete, useApp, selectProjects } from '../store/store';
 import { resetSyncCursor, syncNow, type SyncResult } from '../store/sync';
 import { download } from '../lib/export';
+import { offlineCapability } from '../lib/offline';
 import { formatDate, today } from '../lib/time';
 import { AutoInput, Card, Check, Empty } from '../components/ui';
 
@@ -14,6 +15,7 @@ export default function Settings({ onToast }: { onToast: (m: string) => void }) 
   const fileRef = useRef<HTMLInputElement>(null);
 
   const recordCount = Object.values(snapshot.records).filter((r) => !r.deleted).length;
+  const offline = useMemo(() => offlineCapability(), []);
 
   const run = async () => {
     setBusy(true);
@@ -38,6 +40,12 @@ export default function Settings({ onToast }: { onToast: (m: string) => void }) 
 
   return (
     <>
+      <Card title="オフラインで起動できるか" sub={offline.available ? '使えます' : '使えません'}>
+        <p className={`hint${offline.available ? '' : ' strong'}`} style={{ marginBottom: 0 }}>
+          {offline.reason}
+        </p>
+      </Card>
+
       <Card title="端末間の同期" sub="PC と Android で同じ合言葉を設定すると、内容が共有されます">
         <p className="hint">
           データはまず端末内に保存され、オフラインでも使えます。同期サーバーを設定すると、

@@ -36,7 +36,10 @@ jobs:
                -o /dev/null http://127.0.0.1:8787/api/health
           npm run e2e -- http://127.0.0.1:8787
           npm run e2e:sync -- http://127.0.0.1:8787
-          npm run e2e:offline -- http://127.0.0.1:8787
+          # localhost だけだと Service Worker の secure-context 制約を見落とすので、
+          # LAN の IP 経由 (平文HTTP) も渡して両方の挙動を確認する。
+          LAN_IP=$(hostname -I | awk '{print $1}')
+          npm run e2e:offline -- http://127.0.0.1:8787 "http://$LAN_IP:8787"
 
       - uses: actions/upload-artifact@v4
         with:

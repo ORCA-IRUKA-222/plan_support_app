@@ -1,13 +1,19 @@
 /**
- * PC (同期サーバー) の電源が入っていない状況を再現し、
- * スマホの PWA がホーム画面から起動できることを確認する。
+ * オフライン起動の確認。
+ *
+ * 重要: Service Worker は「安全なコンテキスト」でしか動かない。
+ * localhost と HTTPS だけが該当し、http://192.168.x.x のような LAN の IP への
+ * 平文 HTTP では navigator.serviceWorker が存在しない。
+ * localhost だけで試すとこの制約を見落とすので、両方を確認する。
  *
  *   npm run build && npm run server &
- *   node e2e/offline.mjs [URL]
+ *   node e2e/offline.mjs [URL] [LAN_URL]
  */
 import { chromium } from 'playwright';
 
 const BASE = process.argv[2] ?? process.env.SMOKE_URL ?? 'http://127.0.0.1:8787';
+// 平文 HTTP かつ localhost 以外の origin。スマホから見たときと同じ条件になる。
+const LAN = process.argv[3] ?? process.env.LAN_URL ?? null;
 const errors = [];
 
 const step = async (name, fn) => {
@@ -77,6 +83,44 @@ await step('オンラインに戻すと書いた内容がサーバーへ送ら�
   await page.locator('.tabbar button', { hasText: 'ネタ帳' }).click();
   await page.getByText('外出先で思いついたこと').first().waitFor({ timeout: 8000 });
 });
+
+// LAN の IP に平文 HTTP でつないだ場合、ブラウザは Service Worker を許可しない。
+// これは仕様なので「使えない」ことを確認し、アプリがそれを正しく知らせるかを見る。
+if (LAN) {
+  const lanCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const lanPage = await lanCtx.newPage();
+
+  await step('LAN の平文HTTPでは Service Worker が使えないことを検出する', async () => {
+    await lanPage.goto(LAN, { waitUntil: 'networkidle' });
+    const state = await lanPage.evaluate(() => ({
+      secure: window.isSecureContext,
+      hasApi: 'serviceWorker' in navigator,
+    }));
+    if (state.secure || state.hasApi) {
+      throw new Error(`想定と違う: secure=${state.secure} hasApi=${state.hasApi}`);
+    }
+  });
+
+  await step('その場合はアプリが「使えません」と表示する', async () => {
+    await lanPage.locator('.menu-btn').click();
+    await lanPage.locator('.nav-item', { hasText: '設定・同期' }).first().click();
+    await lanPage.getByText('オフラインで起動できるか').waitFor({ timeout: 5000 });
+    await lanPage.getByText('暗号化されていないため', { exact: false }).waitFor({ timeout: 5000 });
+  });
+
+  await step('LAN の平文HTTPでもサーバーが動いていれば普通に使える', async () => {
+    await lanPage.locator('.menu-btn').click();
+    await lanPage.locator('.nav-item', { hasText: 'ダッシュボード' }).first().click();
+    const mounted = await lanPage.evaluate(
+      () => (document.getElementById('root')?.childElementCount ?? 0) > 0,
+    );
+    if (!mounted) throw new Error('画面が表示されませんでした');
+  });
+
+  await lanCtx.close();
+} else {
+  console.log('  --  LAN_URL 未指定のため、平文HTTPの確認はスキップ');
+}
 
 await browser.close();
 console.log(`\n${errors.length === 0 ? 'OFFLINE PASS' : 'OFFLINE FAIL'} — ${errors.length} 件`);
