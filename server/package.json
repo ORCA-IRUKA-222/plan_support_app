@@ -1,0 +1,14 @@
+{
+  "name": "server",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "端末間同期用の依存ゼロ同期サーバー (node:sqlite)",
+  "scripts": {
+    "start": "node --no-warnings src/index.js",
+    "test": "node --no-warnings --test \"test/*.test.js\""
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

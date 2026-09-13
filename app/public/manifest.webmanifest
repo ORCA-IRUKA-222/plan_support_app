@@ -1,0 +1,16 @@
+{
+  "name": "企画伴走 — 立案から発表まで",
+  "short_name": "企画伴走",
+  "description": "種出し・核の一行化・骨格検証・企画書・発表までを段階ごとに伴走するアプリ",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f7f5f1",
+  "theme_color": "#1c2b3a",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

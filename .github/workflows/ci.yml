@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: 型チェック
+        run: npm run typecheck
+      - name: テスト (フロントエンド + 同期サーバー)
+        run: npm test
+      - name: 本番ビルド
+        run: npm run build
+
+      - name: ブラウザを用意
+        run: npx playwright install --with-deps chromium
+      - name: 画面と同期の通し確認
+        run: |
+          npm run server &
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/api/health && break; sleep 1; done
+          npm run e2e -- http://127.0.0.1:8787
+          npm run e2e:sync -- http://127.0.0.1:8787
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: app/dist
+          retention-days: 14

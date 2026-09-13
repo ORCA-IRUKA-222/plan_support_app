@@ -1,0 +1,35 @@
+name: Android APK
+
+# APK は毎コミット作らず、必要なときだけ手動またはタグで作る。
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+
+      - run: npm ci
+      - name: テスト
+        run: npm test
+
+      - name: APK をビルド
+        run: ./scripts/build-apk.sh debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kikaku-bansou-debug-apk
+          path: app/android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30

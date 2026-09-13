@@ -1,0 +1,27 @@
+{
+  "name": "plan-support-app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "企画の立案から企画書・発表までを伴走するローカルファーストアプリ",
+  "workspaces": [
+    "app",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace app",
+    "build": "npm run build --workspace app",
+    "preview": "npm run preview --workspace app",
+    "server": "npm start --workspace server",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspace app",
+    "apk": "npm run apk --workspace app",
+    "e2e": "node e2e/smoke.mjs",
+    "e2e:sync": "node e2e/sync.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

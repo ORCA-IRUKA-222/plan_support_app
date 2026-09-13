@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+.env
+.env.local
+server/data/
+app/android/
+app/ios/
+coverage/
+*.apk
+*.aab
+*.tsbuildinfo
