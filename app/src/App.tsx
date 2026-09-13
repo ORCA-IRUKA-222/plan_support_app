@@ -75,8 +75,14 @@ export default function App() {
     };
   }, [snapshot, active, notes, seeds]);
 
-  // ---- 自動同期: 起動時と、変更が落ち着いた30秒後 ----
+  // ---- 自動同期 ----
+  // 起動時 / 画面復帰時 / オンライン復帰時 / 変更の30秒後 / 表示中は60秒ごと。
+  // 定期実行がないと、画面を開いたまま放置したときに他端末の変更を拾えない。
   const syncing = useRef(false);
+  // 失敗を毎回トーストすると、サーバーが落ちている間ずっと鳴り続ける。
+  // 連続失敗中は最初の1回だけ知らせ、成功したらまた知らせるようにする。
+  const failureAnnounced = useRef(false);
+
   const runSync = useCallback(
     async (announce: boolean) => {
       if (syncing.current) return;
@@ -88,7 +94,16 @@ export default function App() {
       syncing.current = true;
       const result = await syncNow();
       syncing.current = false;
-      if (announce || !result.ok) showToast(result.message);
+
+      if (result.ok) {
+        failureAnnounced.current = false;
+        if (announce) showToast(result.message);
+        return;
+      }
+      if (announce || !failureAnnounced.current) {
+        failureAnnounced.current = true;
+        showToast(result.message);
+      }
     },
     [snapshot.sync, showToast],
   );
@@ -100,13 +115,16 @@ export default function App() {
     const onOnline = () => void runSync(false);
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', onOnline);
+    // 表示中だけ定期的に取りに行く。裏に回っている間は動かさない。
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') void runSync(false);
+    }, 60_000);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('online', onOnline);
+      clearInterval(timer);
     };
-    // 起動時に一度だけ購読する。runSync は sync 設定の変更で作り直される。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [snapshot.sync.autoSync, snapshot.sync.serverUrl, snapshot.sync.workspaceKey]);
+  }, [snapshot.sync.autoSync, runSync]);
 
   useEffect(() => {
     if (!snapshot.sync.autoSync) return;

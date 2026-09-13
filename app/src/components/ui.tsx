@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 export function Card({ title, sub, actions, children }: {
   title?: ReactNode; sub?: ReactNode; actions?: ReactNode; children: ReactNode;
@@ -174,15 +174,20 @@ export function Toast({ message }: { message: string | null }) {
   return <div className="toast" role="status">{message}</div>;
 }
 
-/** 一定時間で消えるトーストの状態管理。 */
+/**
+ * 一定時間で消えるトーストの状態管理。
+ *
+ * show は useCallback で固定する。毎レンダー新しい関数を返すと、
+ * これに依存する同期タイマーが再生成され続けて発火しなくなる。
+ */
 export function useToast(): [string | null, (m: string) => void] {
   const [msg, setMsg] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  const show = (m: string) => {
+  const show = useCallback((m: string) => {
     setMsg(m);
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setMsg(null), 3200);
-  };
+  }, []);
   return [msg, show];
 }
