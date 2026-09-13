@@ -49,21 +49,57 @@ PC のブラウザと Android スマホの両方で使えて、同じ内容が�
 
 ## 2. 使い始める
 
-必要なもの: **Node.js 22 以上**（同期サーバーが `node:sqlite` を使うため）。
+### 準備するもの
+
+**Node.js 22 以上**だけです（同期サーバーが `node:sqlite` を使うため 22 以上が必要）。
+https://nodejs.org/ja から LTS 版を入れてください。入ったかどうかは次で確認できます。
 
 ```bash
-npm install
-npm run dev          # http://localhost:5173
+node -v      # v22.x.x 以上ならOK
 ```
 
-### PC で使う（ビルドしてブラウザから）
+### コードを PC に持ってくる
+
+コマンドは**このリポジトリのフォルダの中**（`package.json` がある場所）で実行します。
+まだ PC にコードがなければ、どちらかの方法で取得してください。
 
 ```bash
+# 方法A: git がある場合（あとで更新するのが楽）
+git clone https://github.com/ORCA-IRUKA-222/plan_support_app.git
+cd plan_support_app
+```
+
+方法B: git を使わない場合は、GitHub のリポジトリ画面で緑の **Code** ボタン →
+**Download ZIP**。展開してできたフォルダに移動します。
+
+```bash
+cd C:\Users\<ユーザー名>\Downloads\plan_support_app-main   # Windows の例
+cd ~/Downloads/plan_support_app-main                          # macOS の例
+```
+
+正しい場所にいるかは、`package.json` が見えるかで確認できます。
+
+```bash
+dir package.json     # Windows (PowerShell / コマンドプロンプト)
+ls package.json      # macOS / Linux
+```
+
+### 起動する
+
+```bash
+npm install          # 初回だけ。数分かかります
 npm run build
 npm run server       # http://localhost:8787 で画面と同期APIの両方を配信
 ```
 
+ブラウザで http://localhost:8787 を開けばアプリが出ます。
+**ターミナルは開いたままにしてください**（閉じるとサーバーが止まります）。
+止めるときは `Ctrl` + `C`。2回目以降は `npm run server` だけで起動します。
+
 Chrome や Edge のアドレスバーに出る「インストール」からアプリとして入れられます。
+
+> 開発中の画面を触りたいときは `npm run dev`（http://localhost:5173 、保存すると即反映）。
+> ただしスマホと同期して使うのは `npm run server` のほうです。
 
 ### Android スマホで使う
 
