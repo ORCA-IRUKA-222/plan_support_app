@@ -34,12 +34,31 @@ jobs:
       - name: APK をビルド
         run: ./scripts/build-apk.sh debug
 
-      - name: APK を確認
+      - name: APK の中身を確認
         run: |
+          set -euo pipefail
           APK=$(find app/android/app/build/outputs/apk/debug -name '*.apk' | head -1)
           echo "できた APK: $APK"
           ls -lh "$APK"
-          unzip -l "$APK" | grep -E 'AndroidManifest|classes.dex|assets/public/index.html' || true
+
+          echo "--- 画面一式が同梱されているか ---"
+          unzip -l "$APK" | grep -q 'assets/public/index.html'
+          echo "OK: assets/public/index.html"
+
+          # LAN の同期サーバー (平文HTTP) につなぐには次の2つが両方必要。
+          # どちらか欠けると実機で必ず Failed to fetch になるので、ここで落とす。
+          echo "--- 混在コンテンツの許可 ---"
+          unzip -p "$APK" assets/capacitor.config.json | tee /dev/stderr | grep -q '"allowMixedContent": *true'
+          echo "OK: allowMixedContent"
+
+          echo "--- 平文HTTPの許可 (マニフェストはバイナリなので aapt2 で読む) ---"
+          AAPT2=$(find "$ANDROID_HOME/build-tools" -name aapt2 | sort | tail -1)
+          "$AAPT2" dump xmltree --file AndroidManifest.xml "$APK" > manifest.txt
+          grep -q 'usesCleartextTraffic' manifest.txt
+          grep -A1 'usesCleartextTraffic' manifest.txt | head -2
+          # 属性値が true (0xffffffff) であることまで確かめる
+          grep 'usesCleartextTraffic' manifest.txt | grep -qE '\(type 0x12\)0xffffffff'
+          echo "OK: usesCleartextTraffic=true"
 
       - uses: actions/upload-artifact@v4
         with:
