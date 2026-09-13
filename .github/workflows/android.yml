@@ -54,10 +54,9 @@ jobs:
           echo "--- 平文HTTPの許可 (マニフェストはバイナリなので aapt2 で読む) ---"
           AAPT2=$(find "$ANDROID_HOME/build-tools" -name aapt2 | sort | tail -1)
           "$AAPT2" dump xmltree --file AndroidManifest.xml "$APK" > manifest.txt
-          grep -q 'usesCleartextTraffic' manifest.txt
-          grep -A1 'usesCleartextTraffic' manifest.txt | head -2
-          # 属性値が true (0xffffffff) であることまで確かめる
-          grep 'usesCleartextTraffic' manifest.txt | grep -qE '\(type 0x12\)0xffffffff'
+          grep 'usesCleartextTraffic' manifest.txt
+          # aapt2 のバージョンによって "=true" と "(type 0x12)0xffffffff" のどちらでも出る。
+          grep 'usesCleartextTraffic' manifest.txt | grep -qE '=true|0xffffffff'
           echo "OK: usesCleartextTraffic=true"
 
       - uses: actions/upload-artifact@v4
