@@ -95,6 +95,11 @@ zip を展開すると `app-debug.apk` が入っているので、スマホに�
 > `app/android/` は `capacitor.config.ts` から再生成できるためリポジトリには含めていません。
 > スクリプトが必要に応じて `npx cap add android` を実行します。
 
+ビルド実績 (GitHub Actions, ubuntu-latest):
+`app-debug.apk` 4.4MB / Gradle 2分7秒 / compileSdk 35 / minSdk 23 (Android 6.0 以降) /
+アプリID `app.kikaku.bansou`。APK の中に `assets/public/` として画面一式が入るので、
+インストール後はサーバーなしで単独起動できます。
+
 ---
 
 ## 3. 端末間の同期
