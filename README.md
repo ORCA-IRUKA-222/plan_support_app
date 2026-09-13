@@ -163,6 +163,15 @@ hostname -I                   # Linux
 
 Capacitor で APK を生成します。JDK 21 と Android SDK が必要です。
 
+> APK から LAN の同期サーバー（平文 HTTP）につなぐには2つの設定が要ります。
+> どちらもビルド手順に組み込み済みなので、追加の作業は不要です。
+> - `allowMixedContent: true`（`capacitor.config.ts`）
+>   — アプリは `https://localhost` で動くため、`http://` 宛の通信が既定で遮断される
+> - `android:usesCleartextTraffic="true"`（`scripts/configure-android.mjs` が付与）
+>   — Android 9 以降は平文 HTTP が既定で遮断される
+>
+> どちらか欠けると、同期が必ず `Failed to fetch` で失敗します。
+
 ```bash
 ./scripts/build-apk.sh debug
 # → app/android/app/build/outputs/apk/debug/app-debug.apk

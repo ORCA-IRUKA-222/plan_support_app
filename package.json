@@ -12,7 +12,7 @@
     "build": "npm run build --workspace app",
     "preview": "npm run preview --workspace app",
     "server": "npm start --workspace server",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present && node --test \"scripts/*.test.mjs\"",
     "typecheck": "npm run typecheck --workspace app",
     "apk": "npm run apk --workspace app",
     "e2e": "node e2e/smoke.mjs",

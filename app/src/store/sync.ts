@@ -84,9 +84,28 @@ export async function syncNow(signal?: AbortSignal): Promise<SyncResult> {
     }
     return {
       ok: false, pushed: 0, pulled: 0, applied: 0, at,
-      message: `接続できません: ${err instanceof Error ? err.message : String(err)}`,
+      message: describeNetworkError(err, serverUrl),
     };
   }
+}
+
+/**
+ * fetch の失敗は理由を教えてくれない ("Failed to fetch" しか返らない) ので、
+ * 実際に起きがちな原因を並べて次に試すことが分かるようにする。
+ */
+function describeNetworkError(err: unknown, serverUrl: string): string {
+  const detail = err instanceof Error ? err.message : String(err);
+  const lines = [`同期サーバー (${serverUrl}) につながりません。`];
+
+  if (/^https:/i.test(location.origin) && /^http:/i.test(serverUrl.trim())) {
+    lines.push('・アプリが暗号化された接続で動いているため、http:// のサーバーが遮断されている可能性があります。');
+  }
+  lines.push('・PC で npm run server が動いているか');
+  lines.push('・スマホと PC が同じ Wi-Fi につながっているか');
+  lines.push('・URL の IP アドレスとポート番号が合っているか');
+  lines.push('・PC のファイアウォールが通信を許可しているか');
+  lines.push(`（詳細: ${detail}）`);
+  return lines.join('\n');
 }
 
 /** 同期状態をリセットして次回フル取得させる。 */

@@ -31,6 +31,11 @@ if [[ ! -d android ]]; then
   npx cap add android
 fi
 
+# Android 9 以降は平文 HTTP が既定で遮断される。
+# LAN の同期サーバーにつなぐため許可を入れる (何度実行しても同じ結果)。
+echo "==> LAN の同期サーバーへ接続できるように設定"
+node "$ROOT/scripts/configure-android.mjs" android/app/src/main/AndroidManifest.xml
+
 echo "==> ビルド結果を Android プロジェクトへ同期"
 npx cap sync android
 
