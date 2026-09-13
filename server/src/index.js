@@ -1,19 +1,19 @@
 import { createServer } from 'node:http';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { extname, join, normalize, sep } from 'node:path';
 import { openDb, stats, sync } from './db.js';
+import { resolvePaths } from './paths.js';
+
+const { dbFile: DB_FILE, staticDir: STATIC_DIR } = resolvePaths();
 
 const PORT = Number(process.env.PORT ?? 8787);
 const HOST = process.env.HOST ?? '0.0.0.0';
-const DB_FILE = process.env.DB_FILE ?? resolve('server/data/sync.sqlite');
 /** 未設定なら誰でも任意の合言葉でワークスペースを作れる。LAN 内利用向けの既定。 */
 const ALLOWED_KEYS = (process.env.WORKSPACE_KEYS ?? '')
   .split(',')
   .map((s) => s.trim())
   .filter(Boolean);
-/** ビルド済みフロントを同じポートから配る。空なら API のみ。 */
-const STATIC_DIR = process.env.STATIC_DIR ? resolve(process.env.STATIC_DIR) : resolve('app/dist');
 const MAX_BODY = 8 * 1024 * 1024;
 
 const db = openDb(DB_FILE);
@@ -139,9 +139,10 @@ const server = createServer(async (req, res) => {
   return send(res, 404, { error: 'not found' });
 });
 
-server.listen(PORT, HOST, () => {
+server.listen(PORT, HOST, async () => {
   console.log(`同期サーバー起動: http://${HOST}:${PORT}`);
   console.log(`  DB       : ${DB_FILE}`);
-  console.log(`  静的配信 : ${STATIC_DIR}`);
+  const hasStatic = await stat(STATIC_DIR).then((s) => s.isDirectory()).catch(() => false);
+  console.log(`  静的配信 : ${STATIC_DIR}${hasStatic ? '' : '  ← 見つかりません。npm run build を先に実行してください (API のみ動作)'}`);
   console.log(`  合言葉   : ${ALLOWED_KEYS.length ? `${ALLOWED_KEYS.length} 件を許可` : '任意 (8文字以上)'}`);
 });

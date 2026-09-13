@@ -67,12 +67,17 @@ Chrome や Edge のアドレスバーに出る「インストール」からア�
 
 ### Android スマホで使う
 
-**方法A: PWA としてインストール（すぐできる・推奨）**
+2つの入れ方があります。違いは [docs/PWA-vs-APK.md](docs/PWA-vs-APK.md) にまとめました。
+ざっくり言うと **どちらもホーム画面のアイコンから全画面で開く点は同じ**で、
+違うのは配り方（PWA はサーバー経由、APK はファイルを直接インストール）です。
+
+**方法A: PWA としてインストール（すぐできる・普段使いはこちらで十分）**
 
 同期サーバーを LAN 内で起動し、スマホの Chrome から `http://<PCのIP>:8787` を開いて
 メニューの「アプリをインストール」を選びます。ホーム画面のアイコンから全画面で起動します。
+アプリを直したときは PC で `npm run build` するだけでスマホにも反映されます。
 
-**方法B: APK を作る**
+**方法B: APK を作る（PCを起動していない場所でも単独で使いたいとき）**
 
 Capacitor で APK を生成します。JDK 21 と Android SDK が必要です。
 
@@ -82,7 +87,10 @@ Capacitor で APK を生成します。JDK 21 と Android SDK が必要です。
 ```
 
 Android SDK が手元にない場合は、GitHub Actions の **Android APK** ワークフローを
-手動実行（Run workflow）すると、成果物（Artifacts）から APK をダウンロードできます。
+手動実行（Actions タブ → Android APK → Run workflow）すると、
+実行結果の Artifacts から `kikaku-bansou-debug-apk` をダウンロードできます。
+zip を展開すると `app-debug.apk` が入っているので、スマホに転送してタップすればインストールできます
+（初回は「提供元不明のアプリ」の許可が必要です）。
 
 > `app/android/` は `capacitor.config.ts` から再生成できるためリポジトリには含めていません。
 > スクリプトが必要に応じて `npx cap add android` を実行します。

@@ -9,25 +9,31 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
       - run: npm ci
+
       - name: 型チェック
         run: npm run typecheck
-      - name: テスト (フロントエンド + 同期サーバー)
-        run: npm test
+
+      # ビルドを先に走らせる。静的配信のテストが app/dist を見るため。
       - name: 本番ビルド
         run: npm run build
 
+      - name: テスト (フロントエンド + 同期サーバー)
+        run: npm test
+
       - name: ブラウザを用意
         run: npx playwright install --with-deps chromium
+
       - name: 画面と同期の通し確認
         run: |
           npm run server &
-          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8787/api/health && break; sleep 1; done
+          curl -s --retry 60 --retry-all-errors --retry-connrefused --retry-delay 1 \
+               -o /dev/null http://127.0.0.1:8787/api/health
           npm run e2e -- http://127.0.0.1:8787
           npm run e2e:sync -- http://127.0.0.1:8787
 
