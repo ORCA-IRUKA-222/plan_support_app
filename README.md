@@ -100,6 +100,34 @@ dir package.json     # Windows (PowerShell / コマンドプロンプト)
 ls package.json      # macOS / Linux
 ```
 
+### フォルダの場所が分からなくなったら
+
+**PC のどこに置いたか忘れた場合**は、次のコマンドで探せます。
+
+```powershell
+# Windows (PowerShell)
+Get-ChildItem $HOME -Recurse -Directory -Filter plan_support_app -ErrorAction SilentlyContinue |
+  Select-Object -First 5 FullName
+```
+
+```bash
+# macOS / Linux
+find ~ -maxdepth 6 -type d -name 'plan_support_app*' 2>/dev/null
+```
+
+見つかったパスに `cd` すれば、そこが作業フォルダです。
+`git clone` をそのまま実行した場合は、ターミナルを開いたときの場所に作られています。
+Windows なら `C:\Users\<ユーザー名>\plan_support_app` のことが多いです。
+
+**エクスプローラーから開く方法**もあります。フォルダを開いた状態で、
+アドレスバーに `powershell` と入力して Enter を押すと、その場所でターミナルが開きます。
+
+そこが目的のフォルダかどうかは、次で確かめられます。
+
+```bash
+git remote -v     # このリポジトリの URL が出れば正解
+```
+
 ### 最新にする（2回目以降）
 
 このリポジトリを更新したら、PC 側にも取り込む必要があります。
