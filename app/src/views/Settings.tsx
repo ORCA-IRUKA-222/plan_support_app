@@ -7,6 +7,12 @@ import { offlineCapability } from '../lib/offline';
 import { formatDate, today } from '../lib/time';
 import { AutoInput, Card, Check, Empty } from '../components/ui';
 
+/** ビルド日時を読みやすく整える。壊れていたらそのまま出す。 */
+function formatBuildTime(iso: string): string {
+  const t = Date.parse(iso);
+  return Number.isNaN(t) ? iso : formatDate(t);
+}
+
 export default function Settings({ onToast }: { onToast: (m: string) => void }) {
   const snapshot = useApp((s) => s);
   const projects = useMemo(() => selectProjects(snapshot), [snapshot]);
@@ -147,6 +153,27 @@ export default function Settings({ onToast }: { onToast: (m: string) => void }) 
             ))}
           </div>
         )}
+      </Card>
+
+      <Card title="いま動かしている版" sub="「直したはずなのに変わらない」ときの確認用">
+        <table className="data">
+          <tbody>
+            <tr>
+              <th style={{ width: 130 }}>コミット</th>
+              <td style={{ fontFamily: 'ui-monospace, monospace' }}>{__BUILD_INFO__.commit}</td>
+            </tr>
+            <tr>
+              <th>ビルド日時</th>
+              <td>{formatBuildTime(__BUILD_INFO__.builtAt)}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+          ここが古いままなら、PC 側でまだ新しいコードを取り込んでいません。
+          リポジトリのフォルダで <code>git pull</code> → <code>npm install</code> →{' '}
+          <code>npm run build</code> を実行し、サーバーを起動し直してください。
+          それでも画面が変わらないときは、ブラウザで <b>Ctrl + Shift + R</b>（強制再読み込み）を押してください。
+        </p>
       </Card>
 
       <Card title="この段階で立ち止まったら">

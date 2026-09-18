@@ -100,6 +100,25 @@ dir package.json     # Windows (PowerShell / コマンドプロンプト)
 ls package.json      # macOS / Linux
 ```
 
+### 最新にする（2回目以降）
+
+このリポジトリを更新したら、PC 側にも取り込む必要があります。
+**`git pull` を忘れると、いくら `npm run build` しても画面は変わりません。**
+
+```bash
+git pull                 # 新しいコードを取り込む
+npm install              # 依存が増えていることがあるので念のため
+npm run build
+npm run server
+```
+
+いま動かしている版は、アプリの「設定・同期」→ **いま動かしている版** で確認できます。
+コミットが古いままなら `git pull` がまだです。
+画面が変わらないときはブラウザで **Ctrl + Shift + R**（強制再読み込み）を押してください。
+
+ZIP でダウンロードした場合は `git pull` が使えないので、
+もう一度 **Code → Download ZIP** から取り直してください。
+
 ### 起動する
 
 ```bash

@@ -1,9 +1,28 @@
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import type { Plugin } from 'vite';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+
+/**
+ * どの版を動かしているかを画面に出せるようにする。
+ * 「直したはずなのに変わらない」ときに、git pull 忘れなのかを自分で確かめられる。
+ */
+function buildInfo() {
+  let commit = 'unknown';
+  try {
+    commit = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+      cwd: import.meta.dirname,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    // git が無い環境やアーカイブ展開時。版が不明でもアプリは動く。
+  }
+  return { commit, builtAt: new Date().toISOString() };
+}
 
 /**
  * ビルド成果物を列挙して Service Worker を出力する。
@@ -101,6 +120,7 @@ self.addEventListener('fetch', (event) => {
 }
 
 export default defineConfig({
+  define: { __BUILD_INFO__: JSON.stringify(buildInfo()) },
   plugins: [react(), serviceWorker()],
   // Capacitor は file:// から index.html を読み込むため相対パスで出力する。
   base: './',
