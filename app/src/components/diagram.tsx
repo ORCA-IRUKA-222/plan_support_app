@@ -71,7 +71,8 @@ export function Box({
     onClick ? 'is-clickable' : '',
   ].filter(Boolean).join(' ');
 
-  const bodyTop = label ? y - h / 2 + 20 : y - (lines.length - 1) * 8;
+  // ラベルがあるときは、その下に十分な間隔を空ける（重ねない）。
+  const bodyTop = label ? y - h / 2 + 34 : y - (lines.length - 1) * 8;
 
   return (
     <g className={cls} onClick={onClick} role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined}
@@ -79,7 +80,7 @@ export function Box({
       {title && <title>{title}</title>}
       <rect className="dg-box-bg" x={x - w / 2} y={y - h / 2} width={w} height={h} rx={9} />
       {label && (
-        <text className="dg-box-label" x={x} y={y - h / 2 + 14} textAnchor="middle">{label}</text>
+        <text className="dg-box-label" x={x} y={y - h / 2 + 15} textAnchor="middle">{label}</text>
       )}
       {lines.length === 0 && !label && (
         <text className="dg-box-empty" x={x} y={y + 4} textAnchor="middle">（未記入）</text>

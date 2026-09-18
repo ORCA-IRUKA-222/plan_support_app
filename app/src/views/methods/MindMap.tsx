@@ -8,11 +8,12 @@ import { AutoInput, Card, Empty, QuickAdd } from '../../components/ui';
 import { Box, Canvas, EditorPanel, curvePath, truncate } from '../../components/diagram';
 
 const W = 1020;
-const H = 780;
+const H = 860;
 const CX = W / 2;
 const CY = H / 2;
-const R_AXIS = 212;   // 第1階層（8軸）までの距離
-const R_NODE = 330;   // 第2階層までの距離
+// 軸と第2階層の箱が重ならないよう、半径の差を箱の幅より大きく取る。
+const R_AXIS = 215;   // 第1階層（8軸）までの距離
+const R_NODE = 382;   // 第2階層までの距離
 const FAN = 30;       // 第2階層を広げる角度（度）
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
@@ -121,9 +122,21 @@ export default function MindMap({ projectId, snapshot }: { projectId: string; sn
           })}
 
           {/* 枝から枝への線。ここがつながると強い企画になる。 */}
-          {crossLinks.map(({ from, to, key }) => (
-            <path key={key} className="dg-link is-cross" d={curvePath(from.x, from.y, to.x, to.y, 0.18)} />
-          ))}
+          {crossLinks.map(({ from, to, key }) => {
+            // ほぼ真向かいの枝どうしだと直線が中心の円を突き抜けてしまう。
+            // 二次ベジェの最大ふくらみは bend * 長さ / 2 なので、
+            // 中心から CLEARANCE だけ離れるのに必要なぶんだけ曲げる（曲げすぎない）。
+            const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+            const toCenter = Math.hypot(mid.x - CX, mid.y - CY);
+            const length = Math.hypot(to.x - from.x, to.y - from.y) || 1;
+            const CLEARANCE = 118;  // 中心円の半径 72 + 余白
+            const bend = toCenter < CLEARANCE
+              ? Math.min(0.42, (2 * (CLEARANCE - toCenter)) / length)
+              : 0.2;
+            return (
+              <path key={key} className="dg-link is-cross" d={curvePath(from.x, from.y, to.x, to.y, bend)} />
+            );
+          })}
 
           {/* 中心 */}
           <g>
@@ -147,7 +160,7 @@ export default function MindMap({ projectId, snapshot }: { projectId: string; sn
             return (
               <Box
                 key={axis.id}
-                x={p.x} y={p.y} w={132} h={46}
+                x={p.x} y={p.y} w={128} h={46}
                 text={axis.name}
                 selected={selected === axis.id}
                 warn={n === 0}
@@ -165,7 +178,7 @@ export default function MindMap({ projectId, snapshot }: { projectId: string; sn
             return (
               <Box
                 key={p.id}
-                x={p.x} y={p.y} w={136} h={40}
+                x={p.x} y={p.y} w={132} h={40}
                 text={p.text || '（未記入）'}
                 accent={(node?.links.length ?? 0) > 0}
                 badge={node?.children.length || undefined}

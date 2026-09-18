@@ -101,33 +101,38 @@ export default function Mandala({ projectId, snapshot }: { projectId: string; sn
         </p>
 
         <div className="dg-canvas">
+          {/* 3×3 のブロックに分けて描くと、どこが1つのまとまりか目で追える。 */}
           <div className="mandala81" role="grid" aria-label="マンダラート 9×9">
-            {Array.from({ length: 9 }, (_, row) =>
-              Array.from({ length: 9 }, (_, col) => {
-                const c = cellAt(row, col);
-                const selected = sameTarget(target, c.target);
-                const blockRow = Math.floor(row / 3);
-                const blockCol = Math.floor(col / 3);
-                const isCentralBlock = blockRow === 1 && blockCol === 1;
-                return (
-                  <button
-                    key={`${row}-${col}`}
-                    className={[
-                      'm-cell',
-                      c.kind === 'core' ? 'is-core' : '',
-                      c.kind === 'theme' ? 'is-theme' : '',
-                      selected ? 'is-selected' : '',
-                      c.text.trim() ? '' : 'is-empty',
-                      isCentralBlock ? 'm-block-edge' : '',
-                    ].filter(Boolean).join(' ')}
-                    onClick={() => setTarget(c.target)}
-                    title={c.text || '未記入'}
-                  >
-                    {c.text.trim() ? c.text.slice(0, 18) : '＋'}
-                  </button>
-                );
-              }),
-            )}
+            {Array.from({ length: 9 }, (_, block) => (
+              <div
+                key={block}
+                className={`m-block${block === 4 ? ' is-center' : ''}`}
+                role="rowgroup"
+              >
+                {Array.from({ length: 9 }, (_, pos) => {
+                  const row = Math.floor(block / 3) * 3 + Math.floor(pos / 3);
+                  const col = (block % 3) * 3 + (pos % 3);
+                  const c = cellAt(row, col);
+                  const selected = sameTarget(target, c.target);
+                  return (
+                    <button
+                      key={pos}
+                      className={[
+                        'm-cell',
+                        c.kind === 'core' ? 'is-core' : '',
+                        c.kind === 'theme' ? 'is-theme' : '',
+                        selected ? 'is-selected' : '',
+                        c.text.trim() ? '' : 'is-empty',
+                      ].filter(Boolean).join(' ')}
+                      onClick={() => setTarget(c.target)}
+                      title={c.text || '未記入'}
+                    >
+                      {c.text.trim() ? c.text.slice(0, 18) : '＋'}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </div>
       </Card>
