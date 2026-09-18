@@ -2,7 +2,7 @@ import type { AnalogyData } from '../../domain/types';
 import type { AppSnapshot } from '../../store/store';
 import { addSeed, saveTool, selectTool } from '../../store/store';
 import { uid } from '../../lib/id';
-import { AutoText, Card, Empty, Field, QuickAdd } from '../../components/ui';
+import { AutoText, Card, Empty, QuickAdd } from '../../components/ui';
 
 /**
  * アナロジー移植。好きな体験を「表層」と「構造」に分け、構造だけを別ジャンルに持ち込む。
@@ -26,38 +26,64 @@ export default function Analogy({ projectId, snapshot }: { projectId: string; sn
         onAdd={(t) => save({ items: [...data.items, { id: uid('an'), origin: t, surface: '', structure: '', transplant: '' }] })}
       />
 
-      <div className="list" style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 14 }}>
         {data.items.length === 0 && <Empty>まだありません。まず自分が好きな体験を1つ書いてください。</Empty>}
         {data.items.map((item) => (
-          <div key={item.id} className="item">
-            <div className="body">
-              <b style={{ fontSize: 13.5 }}>{item.origin}</b>
-              <div className="grid three" style={{ marginTop: 8 }}>
-                <Field label="表層" hint="見た目・題材。ここは捨てる">
-                  <AutoText value={item.surface} rows={3} onChange={(v) => patch(item.id, { surface: v })} />
-                </Field>
-                <Field label="構造" hint="仕組み。何が快感を生んでいるのか">
-                  <AutoText value={item.structure} rows={3} onChange={(v) => patch(item.id, { structure: v })} />
-                </Field>
-                <Field label="移植先" hint="この構造を別ジャンルに置くと何になるか">
-                  <AutoText value={item.transplant} rows={3} onChange={(v) => patch(item.id, { transplant: v })} />
-                </Field>
-              </div>
-            </div>
-            <div className="col" style={{ gap: 4 }}>
-              <button
-                className="sm ghost"
-                disabled={!item.transplant.trim()}
-                onClick={() => addSeed(projectId, `[移植] ${item.transplant.trim()}`, 'transplant')}
-              >
-                種へ
-              </button>
+          <div key={item.id} className="card" style={{ marginBottom: 12 }}>
+            <div className="row" style={{ marginBottom: 10 }}>
+              <b style={{ fontSize: 14, overflowWrap: 'anywhere' }}>{item.origin}</b>
               <button
                 className="sm ghost danger"
+                style={{ marginLeft: 'auto' }}
                 onClick={() => save({ items: data.items.filter((i) => i.id !== item.id) })}
               >
                 削除
               </button>
+            </div>
+
+            <div className="transplant">
+              <div className="cell drop">
+                <div className="tiny muted">表層 — ここは捨てる</div>
+                <AutoText
+                  value={item.surface}
+                  rows={4}
+                  placeholder="見た目・題材・世界観"
+                  onChange={(v) => patch(item.id, { surface: v })}
+                />
+              </div>
+              <div className="op" aria-hidden="true">捨てる →</div>
+              <div className="cell keep">
+                <div className="tiny muted">構造 — これだけ抜き出す</div>
+                <AutoText
+                  value={item.structure}
+                  rows={4}
+                  placeholder="何が快感を生んでいる仕組みか"
+                  onChange={(v) => patch(item.id, { structure: v })}
+                />
+              </div>
+              <div className="op" aria-hidden="true">移植 →</div>
+              <div className="cell out">
+                <div className="tiny muted">移植先 — 新しい企画</div>
+                <AutoText
+                  value={item.transplant}
+                  rows={4}
+                  placeholder="この構造を別ジャンルに置くと何になるか"
+                  onChange={(v) => patch(item.id, { transplant: v })}
+                />
+              </div>
+            </div>
+
+            <div className="row tight" style={{ marginTop: 8 }}>
+              <button
+                className="sm accent"
+                disabled={!item.transplant.trim()}
+                onClick={() => addSeed(projectId, `[移植] ${item.transplant.trim()}`, 'transplant')}
+              >
+                種へ送る
+              </button>
+              {item.surface.trim() && !item.structure.trim() && (
+                <span className="tiny muted">表層だけでは模倣になります。構造を書き出してください。</span>
+              )}
             </div>
           </div>
         ))}

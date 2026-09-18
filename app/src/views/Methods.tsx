@@ -11,13 +11,13 @@ import Analogy from './methods/Analogy';
 import { Card } from '../components/ui';
 
 const TOOLS = [
-  { id: 'mindmap', name: 'マインドマップ', sub: '発散と構造化。第1階層は8軸固定', when: 'ゼロから発想したい' },
-  { id: 'mandala', name: 'マンダラート', sub: '3×3で漏れを潰す', when: '抜け漏れが不安' },
-  { id: 'scamper', name: 'SCAMPER', sub: '既存物を7操作で改造', when: '既存タイトルの改善案' },
-  { id: 'reversal', name: '逆転発想 / 問題逆転', sub: '常識の反転から成立条件を探す', when: '企画が平凡に感じる' },
-  { id: 'trimemo', name: '三角メモ', sub: 'AとBの掛け合わせ', when: '組み合わせで飛ばしたい' },
-  { id: 'journey', name: '体験の時間割', sub: '感情の折れ線を描く', when: '面白さを他人に説明できない' },
-  { id: 'analogy', name: 'アナロジー移植', sub: '構造だけ抜いて別ジャンルへ', when: '既視感を避けたい' },
+  { id: 'mindmap', name: 'マインドマップ', sub: '中心から8軸に放射。枝どうしを線でつなげる' },
+  { id: 'mandala', name: 'マンダラート', sub: '9×9＝81マスを埋めて漏れを潰す' },
+  { id: 'scamper', name: 'SCAMPER', sub: '対象を中心に7操作を輪で当てる' },
+  { id: 'reversal', name: '逆転発想 / 問題逆転', sub: '常識と逆転を向かい合わせ、成立条件を詰める' },
+  { id: 'trimemo', name: '三角メモ', sub: '2つの三角に言葉を置いて掛け合わせる' },
+  { id: 'journey', name: '体験の時間割', sub: '感情の折れ線を描いて山を探す' },
+  { id: 'analogy', name: 'アナロジー移植', sub: '表層を捨て、構造だけを別ジャンルへ移す' },
 ] as const;
 
 type ToolKey = (typeof TOOLS)[number]['id'];

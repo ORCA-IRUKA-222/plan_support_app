@@ -3,90 +3,160 @@ import type { MandalaData } from '../../domain/types';
 import type { AppSnapshot } from '../../store/store';
 import { saveTool, selectTool } from '../../store/store';
 import { AutoText, Card } from '../../components/ui';
+import { EditorPanel } from '../../components/diagram';
+
+/** 3×3 の中で、中央(4)以外の 8 マスが周囲マスに対応する。 */
+const SURROUND = [0, 1, 2, 3, 5, 6, 7, 8];
+const cellIndex = (pos: number) => (pos < 4 ? pos : pos - 1);
+
+type Target = { block: 'core' } | { block: 'theme'; i: number } | { block: 'sub'; i: number; j: number };
 
 /**
- * マンダラート。枠が固定されているため強制的に埋めさせる力がある。
- * 「8個埋めないといけない」制約が、7個目・8個目で予想外のアイデアを出させる。
+ * マンダラート。中央の核を8つに割り、その8つをさらに8つに割る。
+ * 「81マスを埋めないといけない」という枠の力で、7個目・8個目に予想外が出る。
  */
 export default function Mandala({ projectId, snapshot }: { projectId: string; snapshot: AppSnapshot }) {
   const data = selectTool<MandalaData>(snapshot, projectId, 'mandala');
   const save = (d: MandalaData) => saveTool(projectId, 'mandala', d);
-  const [open, setOpen] = useState<number | null>(null);
+  const [target, setTarget] = useState<Target>({ block: 'core' });
 
-  const filled = data.cells.filter((c) => c.trim()).length;
-  const subFilled = (i: number) => (data.sub[i] ?? []).filter((c) => c.trim()).length;
+  const cells = data.cells;
+  const sub = (i: number) => data.sub[i] ?? Array<string>(8).fill('');
 
   const setCell = (i: number, v: string) => {
-    const cells = data.cells.slice();
-    cells[i] = v;
-    save({ ...data, cells });
+    const next = cells.slice();
+    next[i] = v;
+    save({ ...data, cells: next });
   };
-
   const setSub = (i: number, j: number, v: string) => {
-    const sub = data.sub.map((row) => row.slice());
-    const row = sub[i] ?? Array<string>(8).fill('');
+    const rows = data.sub.map((r) => r.slice());
+    const row = rows[i] ?? Array<string>(8).fill('');
     row[j] = v;
-    sub[i] = row;
-    save({ ...data, sub });
+    rows[i] = row;
+    save({ ...data, sub: rows });
   };
 
-  // 3×3 のうち中央 (index 4) が親、それ以外に 8 マスを配置する。
-  const layout = (cells: string[], onChange: (idx: number, v: string) => void, center: React.ReactNode) =>
-    Array.from({ length: 9 }, (_, pos) => {
-      if (pos === 4) return <div key="c" className="center">{center}</div>;
-      const idx = pos < 4 ? pos : pos - 1;
-      return (
-        <AutoText
-          key={idx}
-          rows={2}
-          value={cells[idx] ?? ''}
-          placeholder={`${idx + 1}`}
-          onChange={(v) => onChange(idx, v)}
-        />
-      );
-    });
+  const filledThemes = cells.filter((c) => c.trim()).length;
+  const filledAll = filledThemes + data.sub.reduce((n, r) => n + r.filter((c) => c.trim()).length, 0);
+
+  /**
+   * 9×9 の各マスが何にあたるかを求める。
+   * 中央ブロック(4)は「核＋8テーマ」、周囲ブロック(b)は「テーマ b ＋その展開」。
+   */
+  const cellAt = (row: number, col: number) => {
+    const block = Math.floor(row / 3) * 3 + Math.floor(col / 3);
+    const pos = (row % 3) * 3 + (col % 3);
+
+    if (block === 4) {
+      if (pos === 4) return { kind: 'core' as const, text: data.center, target: { block: 'core' } as Target };
+      const i = cellIndex(pos);
+      return { kind: 'theme' as const, text: cells[i] ?? '', target: { block: 'theme', i } as Target };
+    }
+
+    const i = cellIndex(block);
+    if (pos === 4) return { kind: 'theme' as const, text: cells[i] ?? '', target: { block: 'theme', i } as Target };
+    const j = cellIndex(pos);
+    return { kind: 'leaf' as const, text: sub(i)[j] ?? '', target: { block: 'sub', i, j } as Target };
+  };
+
+  const sameTarget = (a: Target, b: Target) =>
+    a.block === b.block &&
+    (a.block !== 'theme' || (b.block === 'theme' && a.i === b.i)) &&
+    (a.block !== 'sub' || (b.block === 'sub' && a.i === b.i && a.j === b.j));
+
+  const targetLabel = (): { title: string; hint: string; value: string; onChange: (v: string) => void } => {
+    if (target.block === 'core') {
+      return {
+        title: '中央 — 核',
+        hint: 'この企画の中心に置く一行',
+        value: data.center,
+        onChange: (v) => save({ ...data, center: v }),
+      };
+    }
+    if (target.block === 'theme') {
+      return {
+        title: `テーマ ${target.i + 1}`,
+        hint: '核を成り立たせる要素。8つ埋めきる',
+        value: cells[target.i] ?? '',
+        onChange: (v) => setCell(target.i, v),
+      };
+    }
+    return {
+      title: `テーマ ${target.i + 1}「${cells[target.i] || '未記入'}」 の展開 ${target.j + 1}`,
+      hint: 'そのテーマを具体に落とす',
+      value: sub(target.i)[target.j] ?? '',
+      onChange: (v) => setSub(target.i, target.j, v),
+    };
+  };
+
+  const editor = targetLabel();
 
   return (
     <>
-      <Card title="マンダラート" sub={`中央の核 + 周囲8マス（${filled} / 8 埋まっています）`}>
+      <Card title="マンダラート" sub={`テーマ ${filledThemes} / 8 ・ 全体 ${filledAll} / 72`}>
         <p className="hint">
-          マインドマップが発散向きなのに対し、こちらは枠が固定されているため強制的に埋めさせる力があります。
-          7個目・8個目で予想外のアイデアが出ます。マスをクリックすると、そのマスをさらに3×3へ展開できます。
+          中央の3×3が「核＋8テーマ」、その外側の8ブロックが各テーマの展開です。
+          枠が固定されているぶん強制的に埋めさせる力があり、7個目・8個目で予想外のアイデアが出ます。
+          マスをクリックすると下の欄で編集できます。
         </p>
-        <div className="mandala" style={{ maxWidth: 560 }}>
-          {layout(data.cells, setCell,
-            <AutoText rows={2} value={data.center} placeholder="核" onChange={(v) => save({ ...data, center: v })} />,
-          )}
-        </div>
-        <div className="row tight" style={{ marginTop: 10 }}>
-          {data.cells.map((c, i) => (
-            <button
-              key={i}
-              className="chip"
-              aria-pressed={open === i}
-              disabled={!c.trim()}
-              onClick={() => setOpen(open === i ? null : i)}
-            >
-              {c.trim() ? `${i + 1}. ${c.slice(0, 10)}` : `${i + 1}. （空）`}
-              <span className="muted">{subFilled(i)}/8</span>
-            </button>
-          ))}
+
+        <div className="dg-canvas">
+          <div className="mandala81" role="grid" aria-label="マンダラート 9×9">
+            {Array.from({ length: 9 }, (_, row) =>
+              Array.from({ length: 9 }, (_, col) => {
+                const c = cellAt(row, col);
+                const selected = sameTarget(target, c.target);
+                const blockRow = Math.floor(row / 3);
+                const blockCol = Math.floor(col / 3);
+                const isCentralBlock = blockRow === 1 && blockCol === 1;
+                return (
+                  <button
+                    key={`${row}-${col}`}
+                    className={[
+                      'm-cell',
+                      c.kind === 'core' ? 'is-core' : '',
+                      c.kind === 'theme' ? 'is-theme' : '',
+                      selected ? 'is-selected' : '',
+                      c.text.trim() ? '' : 'is-empty',
+                      isCentralBlock ? 'm-block-edge' : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => setTarget(c.target)}
+                    title={c.text || '未記入'}
+                  >
+                    {c.text.trim() ? c.text.slice(0, 18) : '＋'}
+                  </button>
+                );
+              }),
+            )}
+          </div>
         </div>
       </Card>
 
-      {open !== null && (
-        <Card
-          title={`展開: ${data.cells[open] || `マス ${open + 1}`}`}
-          sub={`${subFilled(open)} / 8`}
-          actions={<button className="sm ghost" onClick={() => setOpen(null)}>閉じる</button>}
-        >
-          <div className="mandala" style={{ maxWidth: 560 }}>
-            {layout(data.sub[open] ?? [], (j, v) => setSub(open, j, v),
-              <AutoText rows={2} value={data.cells[open] ?? ''} onChange={(v) => setCell(open, v)} />,
-            )}
+      <EditorPanel title={editor.title} sub={editor.hint}>
+        <AutoText value={editor.value} rows={3} onChange={editor.onChange} />
+        {target.block === 'theme' && (
+          <div className="row tight" style={{ marginTop: 8 }}>
+            <span className="tiny muted">このテーマの展開へ:</span>
+            {SURROUND.map((_, j) => (
+              <button
+                key={j}
+                className="chip"
+                onClick={() => setTarget({ block: 'sub', i: target.i, j })}
+                disabled={!(cells[target.i] ?? '').trim()}
+              >
+                {j + 1}{(sub(target.i)[j] ?? '').trim() ? ' ✔' : ''}
+              </button>
+            ))}
           </div>
-        </Card>
-      )}
+        )}
+        {target.block === 'sub' && (
+          <div className="row tight" style={{ marginTop: 8 }}>
+            <button className="chip" onClick={() => setTarget({ block: 'theme', i: target.i })}>
+              ← テーマ {target.i + 1} に戻る
+            </button>
+          </div>
+        )}
+      </EditorPanel>
     </>
   );
 }

@@ -227,50 +227,67 @@ function KjMode({ seeds, onToast }: { seeds: Seed[]; onToast: (m: string) => voi
       sub="先に分類枠を作ると既存の枠組みに戻ってしまいます"
       actions={
         <>
-          <span className="tiny muted">{picked.size} 件選択中</span>
+          <span className="tiny muted">{picked.size} 枚選択中</span>
           <button className="accent sm" disabled={picked.size === 0} onClick={groupPicked}>
             束にして名前を付ける
           </button>
         </>
       }
     >
+      <p className="hint">
+        似ていると感じた札をクリックして選び、まとめて名前を付けます。
+        名前を付ける瞬間に出てくる言葉が、そのままキャッチコピーの原型になることがあります。
+      </p>
+
+      {seeds.length === 0 && <Empty>まず「1. 出す」で種を書き出してください。</Empty>}
+
       {groups.map(([name, items]) => (
-        <div key={name || '__ungrouped'} style={{ marginBottom: 14 }}>
-          <div className="row tight" style={{ marginBottom: 6 }}>
+        <div
+          key={name || '__ungrouped'}
+          className={`kj-cluster ${name ? 'is-named' : 'is-unsorted'}`}
+        >
+          <header>
             {name ? (
               <>
-                <b style={{ fontSize: 14 }}>{name}</b>
-                <span className="pill">{items.length}</span>
-                <AutoInput
-                  value={name}
-                  onChange={(v) => { for (const s of items) updateSeed(s.id, { group: v.trim() }); }}
-                />
+                <span className="pill ok">束</span>
+                <div style={{ flex: 1, minWidth: 140, maxWidth: 320 }}>
+                  <AutoInput
+                    value={name}
+                    onChange={(v) => { for (const s of items) updateSeed(s.id, { group: v.trim() }); }}
+                  />
+                </div>
+                <span className="tiny muted">{items.length} 枚</span>
+                <button
+                  className="ghost sm"
+                  style={{ marginLeft: 'auto' }}
+                  onClick={() => { for (const s of items) updateSeed(s.id, { group: '' }); }}
+                >
+                  束を解く
+                </button>
               </>
             ) : (
-              <span className="tiny muted">未分類 ({items.length})</span>
+              <>
+                <span className="pill">未分類</span>
+                <span className="tiny muted">{items.length} 枚 — 似たものを選んで束にしてください</span>
+              </>
             )}
-          </div>
-          <div className="list">
+          </header>
+
+          <div className="kj-cards">
             {items.map((s) => (
-              <label
+              <button
                 key={s.id}
-                className={`item${picked.has(s.id) ? ' starred' : ''}`}
-                style={{ cursor: 'pointer' }}
+                className={`kj-card${picked.has(s.id) ? ' is-picked' : ''}`}
+                onClick={() => toggle(s.id)}
+                title={s.source ? SOURCE_MAP[s.source].name : undefined}
               >
-                <input type="checkbox" checked={picked.has(s.id)} onChange={() => toggle(s.id)} />
-                <div className="body">
-                  {s.text}
-                  {s.source && <span className="pill" style={{ marginLeft: 6 }}>{SOURCE_MAP[s.source].name}</span>}
-                </div>
-                {s.group && (
-                  <button className="ghost sm" onClick={() => updateSeed(s.id, { group: '' })}>外す</button>
-                )}
-              </label>
+                {s.text}
+                {s.starred && <span style={{ color: 'var(--accent)' }}> ★</span>}
+              </button>
             ))}
           </div>
         </div>
       ))}
-      {seeds.length === 0 && <Empty>まず「1. 出す」で種を書き出してください。</Empty>}
     </Card>
   );
 }
