@@ -40,9 +40,34 @@ jobs:
       - name: 本番ビルド
         # Pages はリポジトリ名のサブパスで配信されるため、相対パス (base: './') で出す。
         run: npm run build
+      - name: 配信元を GitHub Actions に固定する
+        # 配信元が「Deploy from a branch」のままだと、同じ push で Jekyll の
+        # "pages build and deployment" も走る。あとから完了したほうが勝つので、
+        # アプリを配信しても README で上書きされてしまう。
+        #
+        # 次の configure-pages の enablement は「Pages が無ければ作る」だけで、
+        # 既にある Pages の配信元は変えてくれない。そのためここで明示的に直す。
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          code=$(curl -sS -o /tmp/pages.json -w '%{http_code}' -X PUT \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/pages" \
+            -d '{"build_type":"workflow"}')
+          echo "PUT /pages -> $code"
+          cat /tmp/pages.json || true
+          echo
+          case "$code" in
+            2*)  echo "配信元を GitHub Actions にしました" ;;
+            404) echo "Pages がまだありません。次の configure-pages が作ります" ;;
+            *)   echo "::error::配信元を切り替えられませんでした (HTTP $code)。Settings → Pages → Source を「GitHub Actions」に手で変えてください。このままだと README が表示され続けます" ;;
+          esac
+
       - uses: actions/configure-pages@v5
         with:
-          # Pages が未設定でも、このワークフローから配信するよう自動で切り替える。
+          # Pages が未設定なら、このワークフローから配信する設定で作る。
           # これが無いと Settings → Pages を手で直すまで失敗し続ける。
           enablement: true
       - uses: actions/upload-pages-artifact@v3

@@ -197,9 +197,11 @@ GitHub Pages に置けば、PC でサーバーを動かさなくてもスマホ�
 > - プライベートリポジトリの Pages は有料プランが必要です。無料プランなら public にしてください
 >   （入力したデータは Gist と各端末にあり、リポジトリには入りません）
 > - 反映には push から1〜2分かかります。表示が古いときは **Ctrl + Shift + R**
-> - アプリではなく README が表示される場合は、Settings → Pages → Source が
->   「Deploy from a branch」に戻っています。「GitHub Actions」に変えるか、
->   Actions タブから *Deploy to GitHub Pages* を一度実行してください
+> - アプリではなく **README が表示される**場合は、Settings → Pages → Source が
+>   「Deploy from a branch」になっています。この状態だと同じ push で Jekyll のビルドも
+>   走り、あとから終わったほうが勝つため、README で上書きされてしまいます。
+>   ワークフローが毎回これを「GitHub Actions」に直しますが、権限で弾かれた場合は
+>   実行ログに赤いエラーが出るので、Settings から手で変えてください
 
 ### Android スマホで使う
 
