@@ -170,13 +170,18 @@ Chrome や Edge のアドレスバーに出る「インストール」からア�
 GitHub Pages に置けば、PC でサーバーを動かさなくてもスマホから開けます。
 **HTTPS になるので PWA のオフライン起動も効くようになります**（後述の制約が消えます）。
 
-1. **Settings → Pages → Source** で **GitHub Actions** を選ぶ
-2. `main` に push すると `.github/workflows/pages.yml` が自動で公開する
-3. `https://<ユーザー名>.github.io/plan_support_app/` で開ける
+`main` に push すると `.github/workflows/pages.yml` が自動で公開します。
+ワークフロー側で Pages の設定（Source = GitHub Actions）も行うので、
+**Settings を手で触る必要はありません**。
 
-> プライベートリポジトリの Pages は有料プランが必要です。
-> 無料プランで使いたい場合はリポジトリを public にしてください
-> （入力したデータは Gist と各端末にあり、リポジトリには入りません）。
+公開先: **<https://orca-iruka-222.github.io/plan_support_app/>**
+
+> - プライベートリポジトリの Pages は有料プランが必要です。無料プランなら public にしてください
+>   （入力したデータは Gist と各端末にあり、リポジトリには入りません）
+> - **Settings → Pages → Source が「Deploy from a branch」のままだと、
+>   README が表示されます。** その場合は「GitHub Actions」に変えるか、
+>   このワークフローを一度実行すれば自動で切り替わります
+> - 反映には push から1〜2分かかります。表示が古いときは **Ctrl + Shift + R**
 
 ### Android スマホで使う
 

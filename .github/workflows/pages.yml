@@ -37,6 +37,10 @@ jobs:
         # Pages はリポジトリ名のサブパスで配信されるため、相対パス (base: './') で出す。
         run: npm run build
       - uses: actions/configure-pages@v5
+        with:
+          # Pages が未設定でも、このワークフローから配信するよう自動で切り替える。
+          # これが無いと Settings → Pages を手で直すまで失敗し続ける。
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: app/dist
