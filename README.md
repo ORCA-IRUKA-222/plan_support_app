@@ -77,6 +77,9 @@ PC でもスマホでも、ブラウザで次を開くだけです。
 続けて「[3. 端末間の同期（GitHub Gist）](#3-端末間の同期github-gist)」を設定すれば、
 PC とスマホで同じ内容が見られます。**以降の節は読まなくて構いません。**
 
+> アプリではなく README が表示されるときは、リポジトリ側の配信設定が必要です。
+> 「[どこからでも開けるようにする](#どこからでも開けるようにする任意github-pages)」を見てください。
+
 以下は、**PC 上で自前で動かしたい場合**（改造する、APK を作る、
 社内など GitHub Pages を開けない環境で使う）の手順です。
 
@@ -189,19 +192,25 @@ GitHub Pages に置けば、PC でサーバーを動かさなくてもスマホ�
 **HTTPS になるので PWA のオフライン起動も効くようになります**（後述の制約が消えます）。
 
 `main` に push すると `.github/workflows/pages.yml` が自動で公開します。
-ワークフロー側で Pages の設定（Source = GitHub Actions）も行うので、
-**Settings を手で触る必要はありません**。
 
 公開先: **<https://orca-iruka-222.github.io/plan_support_app/>**
+
+**最初に1回だけ、配信元の設定が必要です。**
+[Settings → Pages](https://github.com/ORCA-IRUKA-222/plan_support_app/settings/pages) を開き、
+**Build and deployment → Source** を **GitHub Actions** にしてください。
+（この設定だけはワークフローから変更できません。`GITHUB_TOKEN` では
+`PUT /repos/:owner/:repo/pages` が 403 になるためです。）
 
 > - プライベートリポジトリの Pages は有料プランが必要です。無料プランなら public にしてください
 >   （入力したデータは Gist と各端末にあり、リポジトリには入りません）
 > - 反映には push から1〜2分かかります。表示が古いときは **Ctrl + Shift + R**
-> - アプリではなく **README が表示される**場合は、Settings → Pages → Source が
->   「Deploy from a branch」になっています。この状態だと同じ push で Jekyll のビルドも
->   走り、あとから終わったほうが勝つため、README で上書きされてしまいます。
->   ワークフローが毎回これを「GitHub Actions」に直しますが、権限で弾かれた場合は
->   実行ログに赤いエラーが出るので、Settings から手で変えてください
+> - アプリではなく **README が表示される**場合は、上の設定が「Deploy from a branch」の
+>   ままです。この状態だと同じ push で Jekyll のビルド
+>   （Actions タブの *pages build and deployment*）も走り、**あとから終わったほうが勝つ**ため、
+>   アプリを配信しても README で上書きされます。
+>   ワークフローは毎回この状態を検査して、実行ログと実行サマリーに赤いエラーを出します
+> - 設定を直したあとは、Actions タブ → *Deploy to GitHub Pages* → **Run workflow** を
+>   一度実行すると、すぐに反映されます
 
 ### Android スマホで使う
 
