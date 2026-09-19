@@ -18,7 +18,6 @@
     "e2e": "node e2e/smoke.mjs",
     "e2e:sync": "node e2e/sync.mjs",
     "e2e:offline": "node e2e/offline.mjs",
-    "e2e:resume": "node e2e/resume.mjs",
     "e2e:diagrams": "node e2e/diagrams.mjs"
   },
   "engines": {

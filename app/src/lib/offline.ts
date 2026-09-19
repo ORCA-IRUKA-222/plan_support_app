@@ -25,7 +25,7 @@ export function offlineCapability(): OfflineCapability {
     return {
       available: true,
       secure: true,
-      reason: 'この端末では、同期サーバーが止まっていてもアプリを起動できます。',
+      reason: 'この端末では、通信できない場所でもアプリを起動できます。',
     };
   }
 
@@ -36,7 +36,7 @@ export function offlineCapability(): OfflineCapability {
       reason:
         `この接続 (${window.location.origin}) は暗号化されていないため、` +
         'ブラウザがオフライン起動の仕組み (Service Worker) を許可しません。' +
-        'いま入力した内容はこの端末に保存されますが、PC の同期サーバーを止めると' +
+        'いま入力した内容はこの端末に保存されますが、画面を配信している PC を止めると' +
         'この画面自体が開けなくなります。外出先でも使いたい場合は APK 版を入れてください。',
     };
   }

@@ -77,7 +77,7 @@ await step('オフラインでも新しくメモを書ける', async () => {
   await page.getByText('外出先で思いついたこと').first().waitFor({ timeout: 5000 });
 });
 
-await step('オンラインに戻すと書いた内容がサーバーへ送られる', async () => {
+await step('オンラインに戻しても書いた内容が残っている', async () => {
   await ctx.setOffline(false);
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await page.locator('.tabbar button', { hasText: 'ネタ帳' }).click();

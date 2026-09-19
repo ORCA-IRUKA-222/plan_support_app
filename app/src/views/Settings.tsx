@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { emptyState, type PersistedState } from '../store/persist';
 import { replaceAll, setSyncSettings, softDelete, useApp, selectProjects } from '../store/store';
 import { resetSyncCursor, syncNow, type SyncResult } from '../store/sync';
+import { diagnose, type Diagnosis } from '../store/gist';
 import { download } from '../lib/export';
 import { offlineCapability } from '../lib/offline';
 import { formatDate, today } from '../lib/time';
@@ -17,6 +18,7 @@ export default function Settings({ onToast }: { onToast: (m: string) => void }) 
   const snapshot = useApp((s) => s);
   const projects = useMemo(() => selectProjects(snapshot), [snapshot]);
   const [result, setResult] = useState<SyncResult | null>(null);
+  const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -25,10 +27,22 @@ export default function Settings({ onToast }: { onToast: (m: string) => void }) 
 
   const run = async () => {
     setBusy(true);
-    const r = await syncNow();
+    setDiagnosis(null);
+    const r = await syncNow({ allowCreate: true });
+    // Gist を新しく作った場合は、その ID を設定に書き戻す。
+    if (r.createdGistId) setSyncSettings({ gistId: r.createdGistId });
     setBusy(false);
     setResult(r);
     onToast(r.message);
+  };
+
+  const test = async () => {
+    setBusy(true);
+    setResult(null);
+    const d = await diagnose(snapshot.sync.token);
+    setBusy(false);
+    setDiagnosis(d);
+    onToast(d.ok ? '接続できました' : '接続できませんでした');
   };
 
   const importFile = async (file: File) => {
@@ -52,57 +66,94 @@ export default function Settings({ onToast }: { onToast: (m: string) => void }) 
         </p>
       </Card>
 
-      <Card title="端末間の同期" sub="PC と Android で同じ合言葉を設定すると、内容が共有されます">
+      <Card title="端末間の同期（GitHub Gist）" sub="自前のサーバーは不要。外出先からでも揃います">
         <p className="hint">
-          データはまず端末内に保存され、オフラインでも使えます。同期サーバーを設定すると、
-          変更のあったぶんだけを送受信して他の端末と揃えます。同じ項目を別々の端末で編集した場合は、
-          <b>あとから保存されたほうが残ります</b>。
+          非公開の Gist を1つ作り、そこに読み書きして PC とスマホを揃えます。
+          <b>トークンはこの端末の中だけに保存され、GitHub 以外には送信されません。</b>
+          Gist に書き込むデータにもトークンは含まれません。
         </p>
+
         <div className="grid two">
           <label className="field">
-            <span className="lbl">同期サーバーの URL</span>
-            <span className="tiny muted">例: http://192.168.1.10:8787 （自分で立てたサーバー）</span>
-            <AutoInput
-              type="url"
-              value={snapshot.sync.serverUrl}
-              placeholder="http://192.168.1.10:8787"
-              onChange={(v) => setSyncSettings({ serverUrl: v })}
-            />
-          </label>
-          <label className="field">
-            <span className="lbl">合言葉（ワークスペースキー）</span>
-            <span className="tiny muted">8文字以上。全端末で同じ文字列にします</span>
+            <span className="lbl">アクセストークン（gist 権限）</span>
+            <span className="tiny muted">
+              <a href="https://github.com/settings/tokens" target="_blank" rel="noreferrer">
+                github.com/settings/tokens
+              </a>
+              {' '}→ Generate new token <b>(classic)</b> → <b>gist</b> だけにチェック
+            </span>
             <AutoInput
               type="password"
-              value={snapshot.sync.workspaceKey}
-              onChange={(v) => setSyncSettings({ workspaceKey: v })}
+              value={snapshot.sync.token}
+              placeholder="ghp_..."
+              onChange={(v) => setSyncSettings({ token: v.trim() })}
+            />
+          </label>
+
+          <label className="field">
+            <span className="lbl">Gist ID</span>
+            <span className="tiny muted">
+              1台目は<b>空のまま</b>「いま同期する」を押すと自動で作られます。2台目はその ID を入れてください
+            </span>
+            <AutoInput
+              value={snapshot.sync.gistId}
+              placeholder="（空のままで自動作成）"
+              onChange={(v) => setSyncSettings({ gistId: v.trim() })}
             />
           </label>
         </div>
+
         <div className="row" style={{ marginTop: 10 }}>
           <button className="accent" onClick={() => void run()} disabled={busy}>
             {busy ? '同期中…' : 'いま同期する'}
           </button>
-          <Check checked={snapshot.sync.autoSync} onChange={(v) => setSyncSettings({ autoSync: v })}>
-            自動で同期する（起動時・画面復帰時・変更の30秒後）
+          <button onClick={() => void test()} disabled={busy}>接続をテスト</button>
+          <Check checked={snapshot.sync.auto} onChange={(v) => setSyncSettings({ auto: v })}>
+            自動で同期する（起動時・画面復帰時・変更の30秒後・表示中は60秒ごと）
           </Check>
-          <button
-            className="ghost"
-            onClick={() => { resetSyncCursor(); onToast('次回はすべて取り直します'); }}
-          >
-            同期状態をリセット
-          </button>
         </div>
+
+        {snapshot.sync.gistId && (
+          <p className="tiny muted" style={{ marginTop: 8, marginBottom: 0 }}>
+            この Gist:{' '}
+            <a href={`https://gist.github.com/${snapshot.sync.gistId}`} target="_blank" rel="noreferrer">
+              gist.github.com/{snapshot.sync.gistId}
+            </a>
+          </p>
+        )}
+
         {result && (
-          <p className={`hint${result.ok ? '' : ' strong'}`} style={{ marginTop: 10, marginBottom: 0 }}>
+          <p className={`hint${result.ok ? '' : ' strong'}`} style={{ marginTop: 10, marginBottom: 0, whiteSpace: 'pre-wrap' }}>
             {formatDate(result.at)} — {result.message}
           </p>
         )}
+        {diagnosis && (
+          <p className={`hint${diagnosis.ok ? '' : ' strong'}`} style={{ marginTop: 10, marginBottom: 0, whiteSpace: 'pre-wrap' }}>
+            {diagnosis.message}
+          </p>
+        )}
+
+        <details style={{ marginTop: 12 }}>
+          <summary className="tiny muted" style={{ cursor: 'pointer' }}>2台目の設定と注意点</summary>
+          <table className="data" style={{ marginTop: 8 }}>
+            <thead><tr><th>端末</th><th>アクセストークン</th><th>Gist ID</th></tr></thead>
+            <tbody>
+              <tr><td>1台目</td><td>作ったトークン</td><td>空のまま（自動で入る）</td></tr>
+              <tr><td>2台目</td><td>1台目と同じトークン</td><td>1台目に表示された ID</td></tr>
+            </tbody>
+          </table>
+          <ul className="tiny muted" style={{ marginTop: 8, paddingLeft: 18 }}>
+            <li>Fine-grained token は Gist に対応していません。必ず <b>classic</b> で作ってください</li>
+            <li>権限は <b>gist だけ</b>に絞ってください。共用の PC では設定しないことをおすすめします</li>
+            <li>作られる Gist は secret（非公開）ですが、URL を知っている人は閲覧できます</li>
+            <li>同じ項目を2台で同時に直した場合は、あとから保存した方が残ります</li>
+          </ul>
+        </details>
       </Card>
 
       <Card title="バックアップ" sub={`${recordCount} 件のデータ`}>
         <p className="hint">
-          同期サーバーを使わない場合も、この JSON を書き出して別の端末で読み込めば移せます。
+          GitHub を使わない場合も、この JSON を書き出して別の端末で読み込めば移せます。
         </p>
         <div className="row">
           <button

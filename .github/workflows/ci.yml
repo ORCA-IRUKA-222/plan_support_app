@@ -41,8 +41,6 @@ jobs:
           # LAN の IP 経由 (平文HTTP) も渡して両方の挙動を確認する。
           LAN_IP=$(hostname -I | awk '{print $1}')
           npm run e2e:offline -- http://127.0.0.1:8787 "http://$LAN_IP:8787"
-          # サーバーの停止・再開を含むので、専用のポートで自前に起動する
-          npm run e2e:resume -- 8899 "$RUNNER_TEMP/resume.sqlite"
 
       - uses: actions/upload-artifact@v4
         with:

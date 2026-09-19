@@ -1,16 +1,17 @@
 import type { AnyRecord } from '../domain/types';
 
 export interface SyncSettings {
-  serverUrl: string;
-  workspaceKey: string;
-  autoSync: boolean;
+  /** GitHub のアクセストークン（classic / gist 権限）。この端末にだけ保存する。 */
+  token: string;
+  /** データを置く秘密の Gist の ID。 */
+  gistId: string;
+  /** 起動時・画面復帰時・変更後に自動で同期するか。 */
+  auto: boolean;
 }
 
 export interface PersistedState {
   version: 1;
   records: Record<string, AnyRecord>;
-  /** サーバーから受け取った最終シーケンス。次回はここから差分を貰う。 */
-  cursor: number;
   sync: SyncSettings;
   activeProjectId: string | null;
 }
@@ -20,8 +21,7 @@ const KEY = 'kikaku.state.v1';
 export const emptyState = (): PersistedState => ({
   version: 1,
   records: {},
-  cursor: 0,
-  sync: { serverUrl: '', workspaceKey: '', autoSync: true },
+  sync: { token: '', gistId: '', auto: true },
   activeProjectId: null,
 });
 
@@ -36,11 +36,17 @@ export function load(storage: Store): PersistedState {
       return emptyState();
     }
     const base = emptyState();
+    // 自前サーバーで同期していた頃の設定 (serverUrl / workspaceKey / cursor) は
+    // 読み捨てる。記録そのものは同じ形なので、そのまま引き継がれる。
+    const sync = (parsed.sync ?? {}) as Partial<SyncSettings>;
     return {
       version: 1,
       records: parsed.records as Record<string, AnyRecord>,
-      cursor: typeof parsed.cursor === 'number' ? parsed.cursor : 0,
-      sync: { ...base.sync, ...(parsed.sync ?? {}) },
+      sync: {
+        token: typeof sync.token === 'string' ? sync.token : base.sync.token,
+        gistId: typeof sync.gistId === 'string' ? sync.gistId : base.sync.gistId,
+        auto: typeof sync.auto === 'boolean' ? sync.auto : base.sync.auto,
+      },
       activeProjectId: parsed.activeProjectId ?? null,
     };
   } catch {

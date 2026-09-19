@@ -12,7 +12,7 @@ createRoot(el).render(
   </StrictMode>,
 );
 
-// Service Worker を登録しておくと、同期サーバー (PC) の電源が入っていなくても
+// Service Worker を登録しておくと、画面を配信している PC が落ちていても
 // スマホのホーム画面から起動できる。対応していない環境では黙って諦める。
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {

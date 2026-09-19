@@ -1,0 +1,44 @@
+name: Deploy to GitHub Pages
+
+# Gist 同期にしたことで、このアプリは静的ファイルだけで完結する。
+# Pages に置けば PC でサーバーを動かす必要がなくなり、
+# HTTPS になるのでスマホの PWA もオフライン起動できるようになる。
+#
+# 使うには Settings → Pages → Source で「GitHub Actions」を選んでください。
+# （プライベートリポジトリの Pages は有料プランが必要です）
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: 本番ビルド
+        # Pages はリポジトリ名のサブパスで配信されるため、相対パス (base: './') で出す。
+        run: npm run build
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

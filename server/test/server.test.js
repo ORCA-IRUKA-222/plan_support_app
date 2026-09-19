@@ -11,7 +11,6 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const HAS_DIST = existsSync(resolve(REPO_ROOT, 'app/dist/index.html'));
 const PORT = 18787 + (process.pid % 500);
 const BASE = `http://127.0.0.1:${PORT}`;
-const KEY = 'test-workspace-key';
 
 let child;
 let dataDir;
@@ -31,7 +30,7 @@ before(async () => {
   const deadline = Date.now() + 20_000;
   for (;;) {
     try {
-      const res = await fetch(`${BASE}/api/health`);
+      const res = await fetch(`${BASE}/health`);
       if (res.ok) return;
     } catch { /* まだ起動していない */ }
     if (Date.now() > deadline) throw new Error('サーバーが起動しませんでした');
@@ -44,11 +43,11 @@ after(() => {
   if (dataDir) rmSync(dataDir, { recursive: true, force: true });
 });
 
-describe('HTTP サーバー', () => {
+describe('静的ファイルサーバー', () => {
   test('ヘルスチェックが応答する', async () => {
-    const res = await fetch(`${BASE}/api/health`);
+    const res = await fetch(`${BASE}/health`);
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).ok, true);
+    assert.equal(await res.text(), 'ok');
   });
 
   test('server/ から起動してもビルド済み画面を配信する', { skip: HAS_DIST ? false : 'app/dist が未ビルド (npm run build)' }, async () => {
@@ -65,54 +64,15 @@ describe('HTTP サーバー', () => {
     assert.match(await res.text(), /<div id="root">/);
   });
 
-  test('合言葉が短いと 401', async () => {
-    const res = await fetch(`${BASE}/api/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Workspace-Key': 'short' },
-      body: JSON.stringify({ cursor: 0, changes: [] }),
-    });
-    assert.equal(res.status, 401);
-  });
-
-  test('合言葉なしだと 401', async () => {
-    const res = await fetch(`${BASE}/api/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cursor: 0, changes: [] }),
-    });
-    assert.equal(res.status, 401);
-  });
-
-  test('レコードを送って受け取れる', async () => {
-    const post = (body) =>
-      fetch(`${BASE}/api/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Workspace-Key': KEY },
-        body: JSON.stringify(body),
-      }).then((r) => r.json());
-
-    const first = await post({
-      cursor: 0,
-      changes: [{ id: 'n1', kind: 'note', updatedAt: 1000, body: 'テスト' }],
-    });
-    assert.equal(first.changes.length, 1);
-
-    const second = await post({ cursor: 0, changes: [] });
-    assert.equal(second.changes.find((c) => c.id === 'n1').body, 'テスト');
-  });
-
   test('パストラバーサルでリポジトリ外のファイルを読めない', async () => {
     const res = await fetch(`${BASE}/../../../../etc/passwd`);
     const text = await res.text();
     assert.ok(!text.includes('root:'), '/etc/passwd が漏れてはいけない');
   });
 
-  test('壊れた JSON は 400', async () => {
-    const res = await fetch(`${BASE}/api/sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Workspace-Key': KEY },
-      body: '{ not json',
-    });
-    assert.equal(res.status, 400);
+  test('書き込み系のメソッドは受け付けない', async () => {
+    // このサーバーは配信専用。データは持たないし、書き込みも受け付けない。
+    const res = await fetch(BASE, { method: 'POST' });
+    assert.equal(res.status, 405);
   });
 });

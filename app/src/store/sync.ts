@@ -1,114 +1,106 @@
 import type { AnyRecord } from '../domain/types';
-import { localChangesSince, mergeFromServer, store } from './store';
+import { allRecords, mergeRemote, store } from './store';
+import { GistError, createGist, fetchRecords, pushRecords } from './gist';
+import { mergeAll } from './merge';
 
 export interface SyncResult {
   ok: boolean;
-  pushed: number;
   pulled: number;
-  applied: number;
+  pushed: boolean;
   message: string;
   at: number;
+  /** 同期の過程で Gist を新規作成した場合の ID。 */
+  createdGistId?: string;
 }
 
-interface SyncResponse {
-  now: number;
-  cursor: number;
-  changes: AnyRecord[];
-}
+export const isConfigured = (): boolean => store.getSnapshot().sync.token.trim().length > 0;
 
-const LAST_PUSH_KEY = 'kikaku.lastPushedAt';
+const LAST_SYNCED_KEY = 'kikaku.lastSyncedAt';
 
-function lastPushedAt(): number {
+export function lastSyncedAt(): number {
   if (typeof localStorage === 'undefined') return 0;
-  return Number(localStorage.getItem(LAST_PUSH_KEY) ?? 0);
+  return Number(localStorage.getItem(LAST_SYNCED_KEY) ?? 0);
 }
 
-function setLastPushedAt(v: number): void {
+function markSynced(at: number): void {
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(LAST_PUSH_KEY, String(v));
+  localStorage.setItem(LAST_SYNCED_KEY, String(at));
 }
 
-function normalizeUrl(raw: string): string {
-  const trimmed = raw.trim().replace(/\/+$/, '');
-  return `${trimmed}/api/sync`;
-}
+const count = (r: Record<string, AnyRecord>) => Object.keys(r).length;
 
 /**
- * 差分同期を1往復ぶん実行する。
- * push: 前回 push 以降に手元で変わったレコード
- * pull: サーバーの cursor 以降に他端末が変えたレコード
- * どちらも updatedAt による LWW でマージされる。
+ * Gist と1往復して両端末の内容を揃える。
+ *
+ *   1. Gist を読む
+ *   2. 手元の記録と突き合わせ、レコードごとに updatedAt の新しい方を残す（LWW）
+ *   3. 手元に反映する
+ *   4. 突き合わせた結果が Gist と違っていれば書き戻す
+ *
+ * 全量を書き戻すので、どちらの端末で足したものも消えない。
+ * 同じ項目を両方で直した場合のみ、あとから保存した方が残る。
  */
-export async function syncNow(signal?: AbortSignal): Promise<SyncResult> {
-  const snap = store.getSnapshot();
-  const { serverUrl, workspaceKey } = snap.sync;
+export async function syncNow({ allowCreate = false } = {}): Promise<SyncResult> {
   const at = Date.now();
+  const { token, gistId } = store.getSnapshot().sync;
 
-  if (!serverUrl || !workspaceKey) {
-    return { ok: false, pushed: 0, pulled: 0, applied: 0, at, message: '同期サーバーのURLと合言葉を設定してください。' };
+  if (!token.trim()) {
+    return { ok: false, pulled: 0, pushed: false, at, message: 'アクセストークンを設定してください。' };
   }
 
-  const since = lastPushedAt();
-  const changes = localChangesSince(since);
-
   try {
-    const res = await fetch(normalizeUrl(serverUrl), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Workspace-Key': workspaceKey },
-      body: JSON.stringify({ cursor: snap.cursor, changes }),
-      signal: signal ?? null,
-    });
-
-    if (res.status === 401) {
-      return { ok: false, pushed: 0, pulled: 0, applied: 0, at, message: '合言葉が一致しません。' };
+    if (!gistId.trim()) {
+      // 自動同期では絶対に Gist を作らない。
+      // 2台目でトークンを入れた直後に勝手に別の Gist ができてしまうと、
+      // 以後どれだけ同期しても1台目とつながらず、しかも気づけない。
+      if (!allowCreate) {
+        return {
+          ok: false, pulled: 0, pushed: false, at,
+          message: 'Gist ID が未設定です。1台目なら「いま同期する」で作成、2台目なら1台目の ID を入れてください。',
+        };
+      }
+      const created = await createGist(token.trim(), allRecords());
+      markSynced(at);
+      return {
+        ok: true, pulled: 0, pushed: true, at, createdGistId: created,
+        message: `Gist を作成しました (ID: ${created})。他の端末にはこの ID を入れてください。`,
+      };
     }
-    if (!res.ok) {
-      return { ok: false, pushed: 0, pulled: 0, applied: 0, at, message: `サーバーエラー (${res.status})` };
-    }
 
-    const body = (await res.json()) as SyncResponse;
-    const applied = mergeFromServer(body.changes ?? [], body.cursor);
-    setLastPushedAt(at);
+    const cfg = { token: token.trim(), gistId: gistId.trim() };
+    const remote = await fetchRecords(cfg);
+
+    const local = allRecords();
+    const merged = mergeAll(local, Object.values(remote)).next;
+
+    const pulled = mergeRemote(Object.values(remote));
+
+    // Gist に無い記録、または手元の方が新しい記録があるときだけ書き戻す。
+    const needsPush =
+      count(merged) !== count(remote) ||
+      Object.values(merged).some((r) => remote[r.id]?.updatedAt !== r.updatedAt);
+
+    if (needsPush) await pushRecords(cfg, merged);
+    markSynced(at);
 
     return {
       ok: true,
-      pushed: changes.length,
-      pulled: body.changes?.length ?? 0,
-      applied,
+      pulled,
+      pushed: needsPush,
       at,
-      message: `送信 ${changes.length} 件 / 受信 ${body.changes?.length ?? 0} 件 (反映 ${applied} 件)`,
+      message: needsPush
+        ? `同期しました（受信 ${pulled} 件 / 送信 ${count(merged)} 件）`
+        : `同期しました（受信 ${pulled} 件 / 送るものはありません）`,
     };
   } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      return { ok: false, pushed: 0, pulled: 0, applied: 0, at, message: '同期を中止しました。' };
-    }
-    return {
-      ok: false, pushed: 0, pulled: 0, applied: 0, at,
-      message: describeNetworkError(err, serverUrl),
-    };
+    const message = err instanceof GistError
+      ? err.message
+      : `同期に失敗しました: ${err instanceof Error ? err.message : String(err)}`;
+    return { ok: false, pulled: 0, pushed: false, at, message };
   }
 }
 
-/**
- * fetch の失敗は理由を教えてくれない ("Failed to fetch" しか返らない) ので、
- * 実際に起きがちな原因を並べて次に試すことが分かるようにする。
- */
-function describeNetworkError(err: unknown, serverUrl: string): string {
-  const detail = err instanceof Error ? err.message : String(err);
-  const lines = [`同期サーバー (${serverUrl}) につながりません。`];
-
-  if (/^https:/i.test(location.origin) && /^http:/i.test(serverUrl.trim())) {
-    lines.push('・アプリが暗号化された接続で動いているため、http:// のサーバーが遮断されている可能性があります。');
-  }
-  lines.push('・PC で npm run server が動いているか');
-  lines.push('・スマホと PC が同じ Wi-Fi につながっているか');
-  lines.push('・URL の IP アドレスとポート番号が合っているか');
-  lines.push('・PC のファイアウォールが通信を許可しているか');
-  lines.push(`（詳細: ${detail}）`);
-  return lines.join('\n');
-}
-
-/** 同期状態をリセットして次回フル取得させる。 */
+/** 次回に全部取り直させる。 */
 export function resetSyncCursor(): void {
-  setLastPushedAt(0);
+  markSynced(0);
 }

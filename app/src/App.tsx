@@ -5,9 +5,9 @@ import { gateStates, type GateContext } from './domain/gates';
 import type { CoreData, FiveQData, ProposalData, SkeletonData } from './domain/types';
 import {
   createProject, selectNotes, selectProject, selectProjects, selectSeeds, selectTool,
-  setActiveProject, useApp,
+  setActiveProject, setSyncSettings, useApp,
 } from './store/store';
-import { syncNow } from './store/sync';
+import { isConfigured, syncNow } from './store/sync';
 import { Toast, useToast } from './components/ui';
 
 import Dashboard from './views/Dashboard';
@@ -86,13 +86,16 @@ export default function App() {
   const runSync = useCallback(
     async (announce: boolean) => {
       if (syncing.current) return;
-      const { serverUrl, workspaceKey } = snapshot.sync;
-      if (!serverUrl || !workspaceKey) {
-        if (announce) showToast('同期サーバーが未設定です。設定画面から登録してください。');
+      if (!isConfigured()) {
+        if (announce) showToast('同期が未設定です。設定画面でアクセストークンを登録してください。');
         return;
       }
       syncing.current = true;
-      const result = await syncNow();
+      // announce=true は利用者が「⟳ 同期」を押したとき。
+      // 自動同期では Gist を作らせない（2台目で勝手に別の Gist ができるのを防ぐ）。
+      const result = await syncNow({ allowCreate: announce });
+      // Gist を新しく作ったときは ID を保存しておく（次回からその Gist を使う）。
+      if (result.createdGistId) setSyncSettings({ gistId: result.createdGistId });
       syncing.current = false;
 
       if (result.ok) {
@@ -109,7 +112,7 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!snapshot.sync.autoSync) return;
+    if (!snapshot.sync.auto) return;
     void runSync(false);
     const onVisible = () => { if (document.visibilityState === 'visible') void runSync(false); };
     const onOnline = () => void runSync(false);
@@ -124,13 +127,13 @@ export default function App() {
       window.removeEventListener('online', onOnline);
       clearInterval(timer);
     };
-  }, [snapshot.sync.autoSync, runSync]);
+  }, [snapshot.sync.auto, runSync]);
 
   useEffect(() => {
-    if (!snapshot.sync.autoSync) return;
+    if (!snapshot.sync.auto) return;
     const t = setTimeout(() => void runSync(false), 30_000);
     return () => clearTimeout(t);
-  }, [snapshot.records, snapshot.sync.autoSync, runSync]);
+  }, [snapshot.records, snapshot.sync.auto, runSync]);
 
   const badges = useMemo(() => {
     if (!ctx) return {} as Partial<Record<RouteId, string>>;

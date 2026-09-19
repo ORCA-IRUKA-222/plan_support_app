@@ -83,23 +83,20 @@ export function putRecords(recs: AnyRecord[]): void {
   emit({ ...state, records: next });
 }
 
-export function mergeFromServer(incoming: AnyRecord[], cursor: number): number {
+/** クラウドから受け取った記録を取り込む。戻り値は実際に変わった件数。 */
+export function mergeRemote(incoming: AnyRecord[]): number {
   const { next, changed } = mergeAll(state.records, incoming);
-  emit({ ...state, records: next, cursor });
+  if (changed > 0) emit({ ...state, records: next });
   return changed;
 }
 
-/** 前回同期以降にこの端末で変更されたレコード。 */
-export function localChangesSince(ts: number): AnyRecord[] {
-  return Object.values(state.records).filter((r) => r.updatedAt > ts);
+/** いまこの端末が持っている記録すべて。クラウドへはこの全量を書き戻す。 */
+export function allRecords(): Record<string, AnyRecord> {
+  return state.records;
 }
 
 export function setSyncSettings(patch: Partial<SyncSettings>): void {
   emit({ ...state, sync: { ...state.sync, ...patch } });
-}
-
-export function setCursor(cursor: number): void {
-  emit({ ...state, cursor });
 }
 
 export function setActiveProject(id: string | null): void {

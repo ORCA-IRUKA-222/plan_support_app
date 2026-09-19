@@ -93,39 +93,44 @@ await step('骨格検証の画面が開く', async () => {
   await page.getByText('コアループ').first().waitFor({ timeout: 3000 });
 });
 
-await step('思考ツール: マインドマップの8軸が出る', async () => {
+// 図そのものの中身は e2e/diagrams.mjs で詳しく確認する。
+// ここでは各ツールに行けて図が描かれることだけを見る。
+await step('思考ツール: マインドマップが図として描かれる', async () => {
   await page.locator('.nav-item', { hasText: '思考ツール' }).first().click();
-  await page.getByText('どう儲かるか').first().waitFor({ timeout: 3000 });
+  await page.locator('svg .dg-center-bg').first().waitFor({ timeout: 5000 });
+  const axes = await page.locator('svg .dg-box').count();
+  if (axes < 8) throw new Error(`軸が ${axes} 個しかありません`);
 });
 
-await step('マインドマップに枝と第2階層を足せる', async () => {
-  const add = page.getByPlaceholder('枝を足す').first();
+await step('マインドマップに枝を足すと図に出る', async () => {
+  const add = page.getByPlaceholder(/の枝を足す/).first();
   await add.fill('見送る操作');
   await add.press('Enter');
-  await page.getByRole('button', { name: '+ 第2階層' }).first().click();
+  await page.locator('svg .dg-box').filter({ hasText: '見送る操作' }).first().waitFor({ timeout: 5000 });
 });
 
 await step('マンダラートに切り替わる', async () => {
-  await page.getByRole('button', { name: 'マンダラート' }).click();
-  await page.getByText(/中央の核 \+ 周囲8マス/).waitFor({ timeout: 3000 });
+  await page.getByRole('button', { name: 'マンダラート', exact: true }).click();
+  await page.locator('.mandala81 .m-cell').first().waitFor({ timeout: 5000 });
 });
 
 await step('三角メモでA×Bを掛け合わせられる', async () => {
-  await page.getByRole('button', { name: '三角メモ' }).click();
+  await page.getByRole('button', { name: '三角メモ', exact: true }).click();
+  await page.locator('svg polygon.tri-shape-a').waitFor({ timeout: 5000 });
   await page.getByPlaceholder('キーワード').fill('番台');
   await page.getByPlaceholder('キーワード').press('Enter');
   await page.getByPlaceholder('好きなこと').fill('占い');
   await page.getByPlaceholder('好きなこと').press('Enter');
-  await page.getByRole('button', { name: '番台' }).click();
-  await page.getByRole('button', { name: '占い' }).click();
+  await page.locator('svg text.tri-word').filter({ hasText: '番台' }).first().click();
+  await page.locator('svg text.tri-word').filter({ hasText: '占い' }).first().click();
   await page.getByRole('button', { name: /掛け合わせる/ }).click();
-  await page.getByPlaceholder(/面白い言葉をつくる/).waitFor({ timeout: 3000 });
+  await page.getByPlaceholder(/面白い言葉をつくる/).waitFor({ timeout: 5000 });
 });
 
 await step('体験の時間割で折れ線が描かれる', async () => {
-  await page.getByRole('button', { name: '体験の時間割' }).click();
+  await page.getByRole('button', { name: '体験の時間割', exact: true }).click();
   await page.getByRole('button', { name: 'チェックポイントで埋める' }).first().click();
-  await page.locator('svg.spark').first().waitFor({ timeout: 3000 });
+  await page.locator('svg.spark2 path.curve').first().waitFor({ state: 'attached', timeout: 5000 });
 });
 
 await step('フレームワークが開く', async () => {
