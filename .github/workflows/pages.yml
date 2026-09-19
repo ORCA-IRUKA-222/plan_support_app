@@ -4,7 +4,8 @@ name: Deploy to GitHub Pages
 # Pages に置けば PC でサーバーを動かす必要がなくなり、
 # HTTPS になるのでスマホの PWA もオフライン起動できるようになる。
 #
-# 使うには Settings → Pages → Source で「GitHub Actions」を選んでください。
+# Source = GitHub Actions への切り替えは configure-pages の enablement が行うので、
+# Settings を手で触る必要はない。
 # （プライベートリポジトリの Pages は有料プランが必要です）
 on:
   push:
@@ -18,7 +19,10 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # 進行中の配信は止めない。Pages の配信は本番反映そのものなので、
+  # 途中で切ると公開中のサイトが中途半端な状態になりうる。
+  # 連続 push のときは、待ち行列の古いほうだけが捨てられる。
+  cancel-in-progress: false
 
 jobs:
   deploy:
